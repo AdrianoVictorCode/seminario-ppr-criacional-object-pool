@@ -1,36 +1,47 @@
-## Padrão Object Pool
 
-### Motivação:
-Criar e destruir objetos repetidamente pode ser ineficiente, especialmente quando os objetos são pesados, como conexões com banco de dados, conexões de rede ou mesmo entidades em um jogo.
 
-O Object Pool resolve esse problema mantendo um conjunto de objetos reutilizáveis. Quando um objeto não está mais sendo utilizado, ele volta ao pool para ser reaproveitado posteriormente, reduzindo a carga no sistema.
+## Motivação:
+Imagine que estamos desenvolvendo um jogo de pesca em que peixes são criados e descartados constantemente durante a simulação. Cada vez que um peixe é "capturado" ou "solto" no ambiente, um objeto do tipo Fish precisa ser criado ou destruído. Se criarmos um novo objeto a cada evento, o custo de alocação e a pressão sobre o coletor de lixo podem causar quebras de performance ou gargalos de memória, principalmente em dispositivos com recursos limitados.
+
+### Problema:
+- Criação repetitiva: Instanciar objetos repetidamente pode ser custoso.
+- Gerenciamento de memória: A criação e destruição frequentes de objetos aumenta a pressão sobre o coletor de lixo.
+- Performance: Em jogos ou aplicações em tempo real, essa sobrecarga pode causar quedas de frame e atrasos.
+
+### Solução com o Object Pool:
+O padrão Object Pool resolve esse problema pré-criando um conjunto de objetos (neste caso, objetos do tipo Fish) e os mantendo em um "pool". Quando um novo peixe é necessário, o jogo adquire um objeto do pool (por meio do método acquire()) e, quando o objeto não é mais necessário, ele é retornado ao pool (por meio do método release()) para ser reutilizado posteriormente. Isso reduz a sobrecarga de criação/destruição e melhora a performance geral da aplicação.
+
+
+## Estrutura
 
 @startuml
-' Classe que gerencia o pool de objetos
-class EntityPool {
-    - pool : List<Entity>
-    - createFn : () -> Entity
-    - maxSize : int
-    + acquire() : Entity
-    + release(Entity)
+title Object Pool Pattern - Exemplo com Fish
+
+class Fish {
+  - size: Number
+  - race: String
+  - weight: Number
+  + Fish(size: Number = 0, race: String = "none", weight: Number = 0)
+  + reset(size: Number, race: String, weight: Number): void
 }
 
-' Classe base Entity
-class Entity {
-    + type : String
-    + health : int
-    + speed : int
-    + damage : int
+class ObjectPool {
+  - createFn: Function
+  - pool: Array
+  - maxSize: Number
+  + ObjectPool(createFn: Function, maxSize: Number = 5)
+  + acquire(): Fish
+  + release(obj: Fish): void
 }
 
-' Subclasse Enemy utilizada no pool
-class Enemy extends Entity {
-    + ai : String
-}
+' Indica que o ObjectPool gerencia objetos do tipo Fish
+ObjectPool --> Fish : gerencia
 
-EntityPool --> Entity : "gerencia"
-Entity <|-- Enemy
 @enduml
+
+## Participantes
+
+
 
 
 ## Exemplo:
@@ -39,9 +50,24 @@ Entity <|-- Enemy
 
 // Implementação do Pool de Objetos
 
-class EntityPool {
+class Fish {
+    constructor(size = 0, race = "none", weight = 0) {
+        this.size = size;
+        this.race = race;
+        this.weight = weight;
+    }
+
+    reset(size, race, weight) {
+        this.size = size;
+        this.race = race;
+        this.weight = weight;
+    }
+}
+
+// Pool de Objetos (Object Pool)
+class ObjectPool {
     constructor(createFn, maxSize = 5) {
-        this.createFn = createFn; 
+        this.createFn = createFn;
         this.pool = [];
         this.maxSize = maxSize;
 
@@ -50,12 +76,10 @@ class EntityPool {
         }
     }
 
-    // Obtém um objeto do pool (ou cria um novo se necessário)
     acquire() {
         return this.pool.length > 0 ? this.pool.pop() : this.createFn();
     }
 
-    // Libera um objeto e o devolve ao pool
     release(obj) {
         if (this.pool.length < this.maxSize) {
             this.pool.push(obj);
@@ -63,11 +87,33 @@ class EntityPool {
     }
 }
 
-// Criando um pool de inimigos do tipo "ranged"
-const rangedEnemyPool = new EntityPool(() => new Enemy(5, 2, 3, "ranged"), 3);
+    // Criando um pool de peixes com capacidade máxima de 5
+    const fishPool = new ObjectPool(() => new Fish(), 5);
 
-// Pegando uma entidade do pool
-const enemy3 = rangedEnemyPool.acquire();
+    // Simulando o uso do Pool
+    console.log("Adquirindo 3 peixes:");
+    const fish1 = fishPool.acquire();
+    fish1.reset(10, "Salmon", 5);
+    console.log(fish1);
+
+    const fish2 = fishPool.acquire();
+    fish2.reset(15, "Cod", 8);
+    console.log(fish2);
+
+    const fish3 = fishPool.acquire();
+    fish3.reset(7, "Tuna", 4);
+    console.log(fish3);
+
+    // Devolvendo um peixe ao pool
+    console.log("\nLiberando um peixe para reutilização:");
+    fishPool.release(fish1);
+
+    // Reutilizando um peixe do pool
+    console.log("\nAdquirindo um novo peixe (reutilizado do pool):");
+    const fish4 = fishPool.acquire();
+    console.log(fish4); // Esse peixe pode ser o mesmo `fish1` reutilizado
+
+
 
 ```
 
